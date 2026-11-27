@@ -1,4 +1,4 @@
-const CACHE_NAME = "tz-sync-v1";
+const CACHE_NAME = "tz-sync-v2";
 const ASSETS = [
   "./",
   "./index.html",
