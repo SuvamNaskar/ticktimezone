@@ -1,4 +1,4 @@
-const CACHE_NAME = "tz-sync-v2";
+const CACHE_NAME = "timetickzone-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -25,18 +25,18 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// Network-first so installed PWAs always pick up the latest UI/code when online
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         if (response && response.status === 200 && response.type === "basic") {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });

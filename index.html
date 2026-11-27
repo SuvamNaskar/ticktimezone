@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#111111" />
   <meta name="mobile-web-app-capable" content="yes" />
-  <title>ticktimezone — Time Zone Sync</title>
+  <meta name="apple-mobile-web-app-title" content="TimeTickZone" />
+  <title>TimeTickZone</title>
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
   <style>
@@ -42,7 +43,6 @@
       line-height: 1.35;
     }
 
-    /* Top Nav Bar matching suvam.dev */
     .topbar {
       background: var(--surface);
       border-bottom: 2px solid var(--border);
@@ -50,7 +50,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       position: sticky;
       top: 0;
       z-index: 10;
@@ -63,7 +63,7 @@
       letter-spacing: -0.02em;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       white-space: nowrap;
     }
 
@@ -81,7 +81,7 @@
 
     .status-pill {
       font-family: var(--mono);
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -91,12 +91,7 @@
       padding: 4px 8px;
       border: 1.5px solid var(--border);
       background: var(--surface);
-      opacity: 0;
-      transition: opacity 0.15s ease;
-    }
-
-    .status-pill.visible {
-      opacity: 1;
+      white-space: nowrap;
     }
 
     .dot {
@@ -106,10 +101,15 @@
       display: inline-block;
     }
 
+    .dot.paused {
+      background: var(--yellow);
+      border: 1px solid var(--border);
+    }
+
     button.btn {
       appearance: none;
       font-family: var(--mono);
-      font-size: 0.75rem;
+      font-size: 0.74rem;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
@@ -117,8 +117,8 @@
       color: var(--ink);
       border: 2px solid var(--border);
       box-shadow: var(--shadow-sm);
-      min-height: 38px;
-      padding: 7px 12px;
+      min-height: 36px;
+      padding: 6px 11px;
       cursor: pointer;
       transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.12s ease;
       -webkit-tap-highlight-color: transparent;
@@ -137,17 +137,16 @@
       background: var(--yellow);
     }
 
-    /* Main Container */
     .container {
       width: 100%;
       max-width: 820px;
       margin: 0 auto;
-      padding: 28px 18px 40px;
+      padding: 26px 18px 40px;
       flex: 1;
     }
 
     .hero {
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
 
     .hero h1 {
@@ -166,7 +165,6 @@
       font-weight: 500;
     }
 
-    /* Diff Bar */
     .diff-bar {
       background: var(--surface);
       border: 2px solid var(--border);
@@ -197,7 +195,6 @@
       white-space: nowrap;
     }
 
-    /* Cards Grid */
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -212,7 +209,7 @@
         padding: 10px 14px;
       }
       .container {
-        padding: 20px 14px 32px;
+        padding: 18px 14px 32px;
       }
     }
 
@@ -417,20 +414,20 @@
   <header class="topbar">
     <div class="brand">
       <span class="brand-prompt">&gt;_</span>
-      <span>ticktimezone</span>
+      <span>TimeTickZone</span>
     </div>
     <div class="actions">
-      <span id="savePill" class="status-pill"><span class="dot"></span> SAVED</span>
+      <span id="modePill" class="status-pill"><span id="modeDot" class="dot"></span> <span id="modeText">LIVE</span></span>
       <button type="button" id="installBtn" class="btn primary" hidden>INSTALL</button>
       <button type="button" id="swapBtn" class="btn" title="Swap both time zones">⇄ SWAP</button>
-      <button type="button" id="nowBtn" class="btn" title="Set to current time">⏱ NOW</button>
+      <button type="button" id="nowBtn" class="btn" title="Sync to live current time">⏱ LIVE</button>
     </div>
   </header>
 
   <main class="container">
     <section class="hero">
-      <h1>Time Zone Sync.</h1>
-      <p class="hero-sub">Enter a time on either side to convert instantly. Offsets auto-save locally.</p>
+      <h1>TimeTickZone.</h1>
+      <p class="hero-sub">Live time zone sync. Ticks every minute automatically—or enter any time to check a slot.</p>
     </section>
 
     <div id="diffBanner" class="diff-bar"></div>
@@ -493,7 +490,7 @@
 
     <footer class="footer-note">
       <span>MANUAL OFFSET: <code>+5:30</code> <code>+1</code> <code>-4</code> <code>-07:30</code></span>
-      <span>LOCAL STORAGE // OFFLINE READY</span>
+      <span id="saveStatus">CONFIG SAVED LOCALLY</span>
     </footer>
   </main>
 
@@ -562,7 +559,9 @@
         diffBanner: document.getElementById("diffBanner"),
         swapBtn: document.getElementById("swapBtn"),
         nowBtn: document.getElementById("nowBtn"),
-        savePill: document.getElementById("savePill")
+        modeDot: document.getElementById("modeDot"),
+        modeText: document.getElementById("modeText"),
+        saveStatus: document.getElementById("saveStatus")
       };
 
       let state = {
@@ -571,9 +570,11 @@
         offsetA: 330,
         offsetB: 60,
         anchor: "A",
-        minutesOfDay: 21 * 60
+        live: true,
+        minutesOfDay: 0
       };
 
+      let tickTimer = null;
       let saveTimer = null;
 
       function formatOffset(mins) {
@@ -680,7 +681,32 @@
           .replace(/"/g, "&quot;");
       }
 
+      function updateLiveTime() {
+        const now = new Date();
+        const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes();
+        const anchorOffset = state.anchor === "A" ? state.offsetA : state.offsetB;
+        state.minutesOfDay = ((utcMins + anchorOffset) % 1440 + 1440) % 1440;
+      }
+
+      function scheduleNextMinuteTick() {
+        clearTimeout(tickTimer);
+        if (!state.live) return;
+        const now = new Date();
+        const msUntilNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds() + 50;
+        tickTimer = setTimeout(() => {
+          if (state.live) {
+            updateLiveTime();
+            render();
+            scheduleNextMinuteTick();
+          }
+        }, Math.max(250, msUntilNextMinute));
+      }
+
       function render() {
+        if (state.live) {
+          updateLiveTime();
+        }
+
         const isAAnchor = state.anchor === "A";
         const diffAB = state.offsetB - state.offsetA;
 
@@ -717,6 +743,10 @@
         els.cardA.classList.toggle("active", isAAnchor);
         els.cardB.classList.toggle("active", !isAAnchor);
 
+        els.modeDot.classList.toggle("paused", !state.live);
+        els.modeText.textContent = state.live ? "LIVE" : "CUSTOM";
+        els.nowBtn.classList.toggle("primary", !state.live);
+
         const nameA = state.labelA.trim() || "Side A";
         const nameB = state.labelB.trim() || "Side B";
         if (diffAB === 0) {
@@ -732,16 +762,21 @@
         }
       }
 
-      function saveConfig(showIndicator = true) {
+      function saveConfig() {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          if (showIndicator) {
-            els.savePill.classList.add("visible");
-            clearTimeout(saveTimer);
-            saveTimer = setTimeout(() => {
-              els.savePill.classList.remove("visible");
-            }, 1400);
-          }
+          const toSave = {
+            labelA: state.labelA,
+            labelB: state.labelB,
+            offsetA: state.offsetA,
+            offsetB: state.offsetB,
+            anchor: state.anchor
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+          els.saveStatus.textContent = "SAVED JUST NOW";
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(() => {
+            els.saveStatus.textContent = "CONFIG SAVED LOCALLY";
+          }, 1500);
         } catch {
           // Ignore storage errors if blocked
         }
@@ -757,24 +792,16 @@
             if (typeof parsed.labelA === "string") state.labelA = parsed.labelA;
             if (typeof parsed.labelB === "string") state.labelB = parsed.labelB;
             if (parsed.anchor === "A" || parsed.anchor === "B") state.anchor = parsed.anchor;
-            if (typeof parsed.minutesOfDay === "number") state.minutesOfDay = parsed.minutesOfDay;
-            return;
           }
         } catch {
           // Fallback to defaults
         }
-
-        const now = new Date();
-        state.minutesOfDay = now.getHours() * 60 + now.getMinutes();
       }
 
-      function setNow() {
-        const now = new Date();
-        const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes();
-        const anchorOffset = state.anchor === "A" ? state.offsetA : state.offsetB;
-        state.minutesOfDay = ((utcMins + anchorOffset) % 1440 + 1440) % 1440;
+      function enableLiveMode() {
+        state.live = true;
         render();
-        saveConfig();
+        scheduleNextMinuteTick();
       }
 
       function bindSide(side) {
@@ -827,6 +854,8 @@
         timeEl.addEventListener("input", () => {
           const mins = parseTimeInput(timeEl.value);
           if (mins === null) return;
+          state.live = false;
+          clearTimeout(tickTimer);
           state.anchor = side;
           state.minutesOfDay = mins;
           render();
@@ -864,7 +893,21 @@
         saveConfig();
       });
 
-      els.nowBtn.addEventListener("click", setNow);
+      els.nowBtn.addEventListener("click", enableLiveMode);
+
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden && state.live) {
+          render();
+          scheduleNextMinuteTick();
+        }
+      });
+
+      window.addEventListener("focus", () => {
+        if (state.live) {
+          render();
+          scheduleNextMinuteTick();
+        }
+      });
 
       const installBtn = document.getElementById("installBtn");
       let deferredPrompt = null;
@@ -889,10 +932,17 @@
       });
 
       if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (refreshing) return;
+          refreshing = true;
+          window.location.reload();
+        });
         navigator.serviceWorker.register("./sw.js").catch(() => {});
       }
 
       render();
+      scheduleNextMinuteTick();
     })();
   </script>
 </body>

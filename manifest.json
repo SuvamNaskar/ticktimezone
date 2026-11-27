@@ -1,7 +1,7 @@
 {
-  "name": "Time Zone Sync",
-  "short_name": "TZ Sync",
-  "description": "Quickly compare and convert meeting times between two time zones.",
+  "name": "TimeTickZone",
+  "short_name": "TimeTickZone",
+  "description": "Live two-way time zone converter and sync tool.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
