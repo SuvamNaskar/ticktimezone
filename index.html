@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>Time Zone Sync</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --accent-hover: #1d4ed8;
+      --success: #059669;
+      --success-soft: #ecfdf5;
+      --warn: #b45309;
+      --warn-soft: #fffbeb;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+      --radius: 14px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --text: #f1f5f9;
+        --muted: #94a3b8;
+        --border: #334155;
+        --accent: #3b82f6;
+        --accent-soft: rgba(59, 130, 246, 0.15);
+        --accent-hover: #60a5fa;
+        --success: #34d399;
+        --success-soft: rgba(52, 211, 153, 0.14);
+        --warn: #fbbf24;
+        --warn-soft: rgba(251, 191, 36, 0.14);
+        --shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      line-height: 1.4;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 760px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .title-group h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .title-group p {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .save-pill {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--success-soft);
+      color: var(--success);
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      pointer-events: none;
+    }
+
+    .save-pill.visible {
+      opacity: 1;
+    }
+
+    button.btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      min-height: 40px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.05s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button.btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #ffffff;
+    }
+
+    button.btn.primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+
+    button.btn:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    button.btn:active {
+      transform: scale(0.98);
+    }
+
+    .diff-banner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.875rem;
+      color: var(--muted);
+      box-shadow: var(--shadow);
+    }
+
+    .diff-banner strong {
+      color: var(--text);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color 0.15s;
+    }
+
+    .card.active {
+      border-color: var(--accent);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .label-input {
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 700;
+      padding: 4px 6px;
+      margin: -4px -6px;
+      border-radius: 6px;
+      width: 100%;
+      max-width: 190px;
+    }
+
+    .label-input:hover {
+      border-color: var(--border);
+    }
+
+    .label-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .day-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .day-badge.shifted {
+      background: var(--warn-soft);
+      color: var(--warn);
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+
+    .tz-row {
+      display: grid;
+      grid-template-columns: 1fr 96px;
+      gap: 8px;
+    }
+
+    select,
+    input[type="text"],
+    input[type="time"] {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 16px;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+
+    select:focus,
+    input[type="text"]:focus,
+    input[type="time"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .offset-input {
+      text-align: center;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .offset-input.invalid {
+      border-color: #ef4444;
+    }
+
+    .time-input {
+      font-size: 1.55rem !important;
+      font-weight: 700;
+      padding: 10px 12px !important;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+
+    .readout {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding-top: 2px;
+    }
+
+    .readout .ampm {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .hint {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="title-group">
+        <h1>Time Zone Sync</h1>
+        <p>Enter a time on either side to convert instantly. Settings auto-save.</p>
+      </div>
+      <div class="actions">
+        <span id="savePill" class="save-pill">Saved</span>
+        <button type="button" id="installBtn" class="btn primary" hidden>Install App</button>
+        <button type="button" id="swapBtn" class="btn" title="Swap both time zones">⇄ Swap</button>
+        <button type="button" id="nowBtn" class="btn" title="Set to current time">⏱ Now</button>
+      </div>
+    </header>
+
+    <div id="diffBanner" class="diff-banner"></div>
+
+    <section class="grid">
+      <!-- Card A -->
+      <article id="cardA" class="card active">
+        <div class="card-top">
+          <input id="labelA" class="label-input" type="text" value="My Time" aria-label="First person label" />
+          <span id="dayA" class="day-badge">Reference</span>
+        </div>
+
+        <div class="field">
+          <label for="selectA">Time Zone (Select or Type Offset)</label>
+          <div class="tz-row">
+            <select id="selectA" aria-label="Select first time zone"></select>
+            <input id="offsetA" class="offset-input" type="text" placeholder="+5:30" aria-label="Manual UTC offset for first time zone" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="timeA">Time</label>
+          <input id="timeA" class="time-input" type="time" step="60" />
+          <div class="readout">
+            <span id="ampmA" class="ampm">--:--</span>
+            <span id="fmt24A">--:-- (UTC+0:00)</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- Card B -->
+      <article id="cardB" class="card">
+        <div class="card-top">
+          <input id="labelB" class="label-input" type="text" value="Friend's Time" aria-label="Second person label" />
+          <span id="dayB" class="day-badge">Same day</span>
+        </div>
+
+        <div class="field">
+          <label for="selectB">Time Zone (Select or Type Offset)</label>
+          <div class="tz-row">
+            <select id="selectB" aria-label="Select second time zone"></select>
+            <input id="offsetB" class="offset-input" type="text" placeholder="+1:00" aria-label="Manual UTC offset for second time zone" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="timeB">Time</label>
+          <input id="timeB" class="time-input" type="time" step="60" />
+          <div class="readout">
+            <span id="ampmB" class="ampm">--:--</span>
+            <span id="fmt24B">--:-- (UTC+0:00)</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <p class="hint">
+      Tip: You can type offsets like <code>+5:30</code>, <code>+1</code>, <code>-4</code>, or <code>-07:30</code> directly.
+    </p>
+  </main>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "tz_sync_config_v1";
+
+      // Standard UTC offsets sorted from -12:00 to +14:00
+      const PRESETS = [
+        { minutes: -720, label: "UTC-12:00 (Baker Island)" },
+        { minutes: -660, label: "UTC-11:00 (Samoa)" },
+        { minutes: -600, label: "UTC-10:00 (Hawaii)" },
+        { minutes: -570, label: "UTC-09:30 (Marquesas)" },
+        { minutes: -540, label: "UTC-09:00 (Alaska)" },
+        { minutes: -480, label: "UTC-08:00 (Pacific / LA)" },
+        { minutes: -420, label: "UTC-07:00 (Mountain / Denver)" },
+        { minutes: -360, label: "UTC-06:00 (Central / Chicago)" },
+        { minutes: -300, label: "UTC-05:00 (Eastern / New York)" },
+        { minutes: -240, label: "UTC-04:00 (Atlantic)" },
+        { minutes: -210, label: "UTC-03:30 (Newfoundland)" },
+        { minutes: -180, label: "UTC-03:00 (São Paulo / Buenos Aires)" },
+        { minutes: -120, label: "UTC-02:00 (South Georgia)" },
+        { minutes: -60,  label: "UTC-01:00 (Azores)" },
+        { minutes: 0,    label: "UTC+00:00 (London / UTC)" },
+        { minutes: 60,   label: "UTC+01:00 (Berlin / Paris / Lagos)" },
+        { minutes: 120,  label: "UTC+02:00 (Cairo / Athens / Johannesburg)" },
+        { minutes: 180,  label: "UTC+03:00 (Moscow / Riyadh / Nairobi)" },
+        { minutes: 210,  label: "UTC+03:30 (Tehran)" },
+        { minutes: 240,  label: "UTC+04:00 (Dubai / Baku)" },
+        { minutes: 270,  label: "UTC+04:30 (Kabul)" },
+        { minutes: 300,  label: "UTC+05:00 (Karachi / Tashkent)" },
+        { minutes: 330,  label: "UTC+05:30 (India / Sri Lanka)" },
+        { minutes: 345,  label: "UTC+05:45 (Nepal)" },
+        { minutes: 360,  label: "UTC+06:00 (Dhaka / Almaty)" },
+        { minutes: 390,  label: "UTC+06:30 (Yangon)" },
+        { minutes: 420,  label: "UTC+07:00 (Bangkok / Jakarta)" },
+        { minutes: 480,  label: "UTC+08:00 (Singapore / Beijing / Perth)" },
+        { minutes: 525,  label: "UTC+08:45 (Eucla)" },
+        { minutes: 540,  label: "UTC+09:00 (Tokyo / Seoul)" },
+        { minutes: 570,  label: "UTC+09:30 (Adelaide)" },
+        { minutes: 600,  label: "UTC+10:00 (Sydney / Guam)" },
+        { minutes: 630,  label: "UTC+10:30 (Lord Howe)" },
+        { minutes: 660,  label: "UTC+11:00 (Solomon Islands)" },
+        { minutes: 720,  label: "UTC+12:00 (Auckland / Fiji)" },
+        { minutes: 765,  label: "UTC+12:45 (Chatham Islands)" },
+        { minutes: 780,  label: "UTC+13:00 (Tonga / Samoa)" },
+        { minutes: 840,  label: "UTC+14:00 (Line Islands)" }
+      ];
+
+      const els = {
+        labelA: document.getElementById("labelA"),
+        labelB: document.getElementById("labelB"),
+        selectA: document.getElementById("selectA"),
+        selectB: document.getElementById("selectB"),
+        offsetA: document.getElementById("offsetA"),
+        offsetB: document.getElementById("offsetB"),
+        timeA: document.getElementById("timeA"),
+        timeB: document.getElementById("timeB"),
+        ampmA: document.getElementById("ampmA"),
+        ampmB: document.getElementById("ampmB"),
+        fmt24A: document.getElementById("fmt24A"),
+        fmt24B: document.getElementById("fmt24B"),
+        dayA: document.getElementById("dayA"),
+        dayB: document.getElementById("dayB"),
+        cardA: document.getElementById("cardA"),
+        cardB: document.getElementById("cardB"),
+        diffBanner: document.getElementById("diffBanner"),
+        swapBtn: document.getElementById("swapBtn"),
+        nowBtn: document.getElementById("nowBtn"),
+        savePill: document.getElementById("savePill")
+      };
+
+      let state = {
+        labelA: "My Time",
+        labelB: "Friend's Time",
+        offsetA: 330, // +5:30
+        offsetB: 60,  // +1:00
+        anchor: "A",  // Which side was last edited ("A" or "B")
+        minutesOfDay: 21 * 60 // 9:00 PM
+      };
+
+      let saveTimer = null;
+
+      function formatOffset(mins) {
+        const sign = mins >= 0 ? "+" : "-";
+        const abs = Math.abs(mins);
+        const h = Math.floor(abs / 60);
+        const m = abs % 60;
+        return `${sign}${h}:${String(m).padStart(2, "0")}`;
+      }
+
+      function parseOffset(str) {
+        if (!str) return null;
+        let s = str.trim().toUpperCase().replace(/^(UTC|GMT)\s*/, "");
+        if (s === "" || s === "Z") return 0;
+
+        const match = s.match(/^([+-]?)\s*(\d{1,2})(?::?(\d{2}))?$/);
+        if (!match) return null;
+
+        const sign = match[1] === "-" ? -1 : 1;
+        const hours = parseInt(match[2], 10);
+        const mins = match[3] ? parseInt(match[3], 10) : 0;
+
+        if (mins >= 60 || hours > 14 || (hours === 14 && mins > 0)) {
+          return null;
+        }
+        return sign * (hours * 60 + mins);
+      }
+
+      function populateSelect(selectEl) {
+        const customOpt = document.createElement("option");
+        customOpt.value = "custom";
+        customOpt.textContent = "Custom offset…";
+        selectEl.appendChild(customOpt);
+
+        for (const p of PRESETS) {
+          const opt = document.createElement("option");
+          opt.value = String(p.minutes);
+          opt.textContent = p.label;
+          selectEl.appendChild(opt);
+        }
+      }
+
+      function syncSelectWithOffset(selectEl, offsetMins) {
+        const match = PRESETS.find((p) => p.minutes === offsetMins);
+        selectEl.value = match ? String(match.minutes) : "custom";
+      }
+
+      function formatTime24(totalMins) {
+        const wrapped = ((totalMins % 1440) + 1440) % 1440;
+        const h = Math.floor(wrapped / 60);
+        const m = wrapped % 60;
+        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      }
+
+      function formatTime12(totalMins) {
+        const wrapped = ((totalMins % 1440) + 1440) % 1440;
+        const h24 = Math.floor(wrapped / 60);
+        const m = wrapped % 60;
+        const period = h24 >= 12 ? "PM" : "AM";
+        const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+        return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+      }
+
+      function parseTimeInput(val) {
+        if (!val || !val.includes(":")) return null;
+        const [h, m] = val.split(":").map(Number);
+        if (Number.isNaN(h) || Number.isNaN(m)) return null;
+        return h * 60 + m;
+      }
+
+      function formatDuration(diffMins) {
+        const abs = Math.abs(diffMins);
+        const h = Math.floor(abs / 60);
+        const m = abs % 60;
+        if (h === 0 && m === 0) return "0m";
+        if (m === 0) return `${h}h`;
+        if (h === 0) return `${m}m`;
+        return `${h}h ${m}m`;
+      }
+
+      function renderDayBadge(badgeEl, dayShift, isAnchor) {
+        if (isAnchor) {
+          badgeEl.textContent = "Reference";
+          badgeEl.classList.remove("shifted");
+          return;
+        }
+        if (dayShift === 0) {
+          badgeEl.textContent = "Same day";
+          badgeEl.classList.remove("shifted");
+        } else if (dayShift > 0) {
+          badgeEl.textContent = `+${dayShift} day (Next day)`;
+          badgeEl.classList.add("shifted");
+        } else {
+          badgeEl.textContent = `${dayShift} day (Prev day)`;
+          badgeEl.classList.add("shifted");
+        }
+      }
+
+      function render() {
+        const isAAnchor = state.anchor === "A";
+        const diffAB = state.offsetB - state.offsetA;
+
+        let rawA, rawB;
+        if (isAAnchor) {
+          rawA = state.minutesOfDay;
+          rawB = rawA + diffAB;
+        } else {
+          rawB = state.minutesOfDay;
+          rawA = rawB - diffAB;
+        }
+
+        const dayShiftA = Math.floor(rawA / 1440);
+        const dayShiftB = Math.floor(rawB / 1440);
+
+        // Update time inputs & readouts
+        const str24A = formatTime24(rawA);
+        const str24B = formatTime24(rawB);
+
+        if (document.activeElement !== els.timeA) {
+          els.timeA.value = str24A;
+        }
+        if (document.activeElement !== els.timeB) {
+          els.timeB.value = str24B;
+        }
+
+        els.ampmA.textContent = formatTime12(rawA);
+        els.ampmB.textContent = formatTime12(rawB);
+        els.fmt24A.textContent = `${str24A} (UTC${formatOffset(state.offsetA)})`;
+        els.fmt24B.textContent = `${str24B} (UTC${formatOffset(state.offsetB)})`;
+
+        renderDayBadge(els.dayA, dayShiftA, isAAnchor);
+        renderDayBadge(els.dayB, dayShiftB, !isAAnchor);
+
+        els.cardA.classList.toggle("active", isAAnchor);
+        els.cardB.classList.toggle("active", !isAAnchor);
+
+        // Difference banner
+        const nameA = state.labelA.trim() || "Side A";
+        const nameB = state.labelB.trim() || "Side B";
+        if (diffAB === 0) {
+          els.diffBanner.innerHTML = `<strong>${escapeHtml(nameA)}</strong> and <strong>${escapeHtml(nameB)}</strong> are in the <strong>same time zone</strong>.`;
+        } else {
+          const relation = diffAB > 0 ? "ahead of" : "behind";
+          els.diffBanner.innerHTML = `<strong>${escapeHtml(nameB)}</strong> is <strong>${formatDuration(diffAB)} ${relation}</strong> ${escapeHtml(nameA)}.`;
+        }
+      }
+
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function saveConfig(showIndicator = true) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          if (showIndicator) {
+            els.savePill.classList.add("visible");
+            clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+              els.savePill.classList.remove("visible");
+            }, 1400);
+          }
+        } catch {
+          // Ignore storage errors if blocked
+        }
+      }
+
+      function loadConfig() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (typeof parsed.offsetA === "number") state.offsetA = parsed.offsetA;
+            if (typeof parsed.offsetB === "number") state.offsetB = parsed.offsetB;
+            if (typeof parsed.labelA === "string") state.labelA = parsed.labelA;
+            if (typeof parsed.labelB === "string") state.labelB = parsed.labelB;
+            if (parsed.anchor === "A" || parsed.anchor === "B") state.anchor = parsed.anchor;
+            if (typeof parsed.minutesOfDay === "number") state.minutesOfDay = parsed.minutesOfDay;
+            return;
+          }
+        } catch {
+          // Fallback to defaults
+        }
+
+        // First-time default: use current local time in Side A
+        const now = new Date();
+        state.minutesOfDay = now.getHours() * 60 + now.getMinutes();
+      }
+
+      function setNow() {
+        const now = new Date();
+        const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes();
+        const anchorOffset = state.anchor === "A" ? state.offsetA : state.offsetB;
+        state.minutesOfDay = ((utcMins + anchorOffset) % 1440 + 1440) % 1440;
+        render();
+        saveConfig();
+      }
+
+      function bindSide(side) {
+        const isA = side === "A";
+        const labelEl = isA ? els.labelA : els.labelB;
+        const selectEl = isA ? els.selectA : els.selectB;
+        const offsetEl = isA ? els.offsetA : els.offsetB;
+        const timeEl = isA ? els.timeA : els.timeB;
+        const offsetKey = isA ? "offsetA" : "offsetB";
+        const labelKey = isA ? "labelA" : "labelB";
+
+        labelEl.addEventListener("input", () => {
+          state[labelKey] = labelEl.value;
+          render();
+          saveConfig();
+        });
+
+        selectEl.addEventListener("change", () => {
+          if (selectEl.value === "custom") {
+            offsetEl.focus();
+            offsetEl.select();
+            return;
+          }
+          const mins = parseInt(selectEl.value, 10);
+          state[offsetKey] = mins;
+          offsetEl.value = formatOffset(mins);
+          offsetEl.classList.remove("invalid");
+          render();
+          saveConfig();
+        });
+
+        offsetEl.addEventListener("input", () => {
+          const parsed = parseOffset(offsetEl.value);
+          if (parsed === null) {
+            offsetEl.classList.add("invalid");
+            return;
+          }
+          offsetEl.classList.remove("invalid");
+          state[offsetKey] = parsed;
+          syncSelectWithOffset(selectEl, parsed);
+          render();
+          saveConfig();
+        });
+
+        offsetEl.addEventListener("blur", () => {
+          offsetEl.classList.remove("invalid");
+          offsetEl.value = formatOffset(state[offsetKey]);
+        });
+
+        timeEl.addEventListener("input", () => {
+          const mins = parseTimeInput(timeEl.value);
+          if (mins === null) return;
+          state.anchor = side;
+          state.minutesOfDay = mins;
+          render();
+          saveConfig();
+        });
+      }
+
+      // Initialize
+      populateSelect(els.selectA);
+      populateSelect(els.selectB);
+      loadConfig();
+
+      els.labelA.value = state.labelA;
+      els.labelB.value = state.labelB;
+      els.offsetA.value = formatOffset(state.offsetA);
+      els.offsetB.value = formatOffset(state.offsetB);
+      syncSelectWithOffset(els.selectA, state.offsetA);
+      syncSelectWithOffset(els.selectB, state.offsetB);
+
+      bindSide("A");
+      bindSide("B");
+
+      els.swapBtn.addEventListener("click", () => {
+        [state.offsetA, state.offsetB] = [state.offsetB, state.offsetA];
+        [state.labelA, state.labelB] = [state.labelB, state.labelA];
+        state.anchor = state.anchor === "A" ? "B" : "A";
+
+        els.labelA.value = state.labelA;
+        els.labelB.value = state.labelB;
+        els.offsetA.value = formatOffset(state.offsetA);
+        els.offsetB.value = formatOffset(state.offsetB);
+        syncSelectWithOffset(els.selectA, state.offsetA);
+        syncSelectWithOffset(els.selectB, state.offsetB);
+
+        render();
+        saveConfig();
+      });
+
+      els.nowBtn.addEventListener("click", setNow);
+
+      // PWA Install prompt + Service Worker
+      const installBtn = document.getElementById("installBtn");
+      let deferredPrompt = null;
+
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        installBtn.hidden = false;
+      });
+
+      installBtn.addEventListener("click", async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBtn.hidden = true;
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installBtn.hidden = true;
+        deferredPrompt = null;
+      });
+
+      if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      }
+
+      render();
+    })();
+  </script>
+</body>
+</html>
